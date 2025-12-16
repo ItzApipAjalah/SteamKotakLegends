@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SteamDB Explorer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+</head>
+
+<body>
+  <!-- Draggable Titlebar -->
+  <div class="titlebar">
+    <button id="sidebarToggle" class="sidebar-toggle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 12h18M3 6h18M3 18h18" />
+      </svg>
+    </button>
+    <span class="titlebar-title">🎮 SteamDB Explorer</span>
+  </div>
+
+  <div class="app-container">
+    <!-- Animated Background -->
+    <div class="bg-gradient"></div>
+    <div class="bg-grid"></div>
+    <div class="floating-orb orb-1"></div>
+    <div class="floating-orb orb-2"></div>
+    <div class="floating-orb orb-3"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+        <span class="sidebar-title">Steam Accounts</span>
+      </div>
+
+      <div id="accountsLoading" class="accounts-loading">
+        <div class="mini-loader"></div>
+        <span>Loading accounts...</span>
+      </div>
+
+      <div id="accountsError" class="accounts-error hidden">
+        <span id="accountsErrorMsg">No accounts found</span>
+      </div>
+
+      <div id="accountsList" class="accounts-list hidden"></div>
+
+      <!-- My Library Section -->
+      <div class="my-library-section">
+        <div class="library-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+          </svg>
+          <span>My Library</span>
+        </div>
+        <div id="libraryList" class="library-list">
+          <div class="library-empty">No games installed</div>
+        </div>
+        <div id="sidebarNotification" class="sidebar-notification hidden"></div>
+      </div>
+
+      <!-- SteamTools Section -->
+      <div class="steamtools-section">
+        <div class="steamtools-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
+          </svg>
+          <span>SteamTools</span>
+        </div>
+
+        <div id="steamtoolsStatus" class="steamtools-status">
+          <div class="status-loading">Checking...</div>
+        </div>
+
+        <div id="steamtoolsInstalled" class="steamtools-installed hidden">
+          <span class="installed-badge">✓ Installed</span>
+        </div>
+
+        <div id="steamtoolsDownload" class="steamtools-download hidden">
+          <button id="downloadSteamToolsBtn" class="download-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="7,10 12,15 17,10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Download SteamTools
+          </button>
+          <div id="downloadProgress" class="download-progress hidden">
+            <div id="progressBar" class="progress-bar"></div>
+            <span id="progressText" class="progress-text">0%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <button id="openSteamBtn" class="open-steam-btn">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+          </svg>
+          Open Steam
+        </button>
+        <button id="refreshAccountsBtn" class="refresh-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6M1 20v-6h6" />
+            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+          </svg>
+          Refresh
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Header -->
+      <header class="header">
+        <div class="logo">
+          <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
+          </svg>
+          <span class="logo-text">Steam<span class="highlight">DB</span> Explorer</span>
+        </div>
+        <div class="header-subtitle">Discover & Explore Steam Games</div>
+      </header>
+
+      <!-- Search Section -->
+      <section class="search-section">
+        <div class="search-card">
+          <h2 class="search-title">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+            Search Game by Steam App ID
+          </h2>
+          <div class="search-form">
+            <div class="input-wrapper">
+              <input type="number" id="gameIdInput" class="search-input"
+                placeholder="Enter Steam App ID (e.g., 271590 for GTA V)" min="1" />
+              <div class="input-glow"></div>
+            </div>
+            <button id="searchBtn" class="search-btn">
+              <span class="btn-text">Search</span>
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+          <div class="search-hints">
+            <span class="hint">Popular: </span>
+            <button class="hint-btn" data-id="271590">GTA V</button>
+            <button class="hint-btn" data-id="2246340">Monster Hunter Wilds</button>
+            <button class="hint-btn" data-id="1903340">Expedition 33</button>
+            <button class="hint-btn" data-id="1091500">Cyberpunk</button>
+            <button class="hint-btn" data-id="1245620">Elden Ring</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Loading State -->
+      <section id="loadingSection" class="loading-section hidden">
+        <div class="loading-card">
+          <div class="loader">
+            <div class="loader-ring"></div>
+            <div class="loader-ring"></div>
+            <div class="loader-ring"></div>
+          </div>
+          <p class="loading-text">Fetching game data from SteamDB...</p>
+        </div>
+      </section>
+
+      <!-- Error State -->
+      <section id="errorSection" class="error-section hidden">
+        <div class="error-card">
+          <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M15 9l-6 6M9 9l6 6" />
+          </svg>
+          <h3 class="error-title">Oops! Something went wrong</h3>
+          <p id="errorMessage" class="error-message"></p>
+          <button id="retryBtn" class="retry-btn">Try Again</button>
+        </div>
+      </section>
+
+      <!-- Game Result Section -->
+      <section id="resultSection" class="result-section hidden">
+        <div class="game-card">
+          <!-- Game Header -->
+          <div class="game-header">
+            <img id="gameLogo" class="game-logo" src="" alt="Game Logo" />
+            <div class="game-header-info">
+              <div class="game-badges">
+                <span id="gameType" class="game-type">Game</span>
+                <span id="multiplayerBadge" class="multiplayer-badge hidden" title="Multiplayer">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 00-3-3.87" />
+                    <path d="M16 3.13a4 4 0 010 7.75" />
+                  </svg>
+                  Multiplayer
+                </span>
+                <span id="onlineFixBadge" class="onlinefix-badge hidden" title="Online Fix Available">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path
+                      d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                  </svg>
+                  Online Fix
+                </span>
+              </div>
+              <h1 id="gameName" class="game-name"></h1>
+              <div class="game-meta">
+                <span id="gameDeveloper" class="meta-item">
+                  <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path
+                      d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                  <span class="meta-label">Developer:</span>
+                  <span class="meta-value"></span>
+                </span>
+                <span id="gamePublisher" class="meta-item">
+                  <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                    <path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" />
+                  </svg>
+                  <span class="meta-label">Publisher:</span>
+                  <span class="meta-value"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add to Library Button -->
+          <div class="add-library-section">
+            <button id="addToLibraryBtn" class="add-library-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Add to Library
+            </button>
+            <div id="libraryStatus" class="library-status hidden"></div>
+          </div>
+
+          <!-- Online Fix Download Section -->
+          <div class="add-library-section onlinefix-section">
+            <button id="onlineFixDownloadBtn" class="onlinefix-download-btn hidden">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="7,10 12,15 17,10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Download Online Fix
+            </button>
+            <div id="onlineFixStatus" class="library-status hidden"></div>
+          </div>
+
+          <!-- Game Description -->
+          <div class="game-description">
+            <h3 class="section-title">
+              <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                <polyline points="14,2 14,8 20,8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+              </svg>
+              Description
+            </h3>
+            <p id="gameDescription" class="description-text"></p>
+          </div>
+
+          <!-- Game Info Grid -->
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-icon-wrapper">
+                <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              </div>
+              <div class="info-content">
+                <span class="info-label">Release Date</span>
+                <span id="gameReleaseDate" class="info-value"></span>
+              </div>
+            </div>
+            <div class="info-item">
+              <div class="info-icon-wrapper">
+                <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12,6 12,12 16,14" />
+                </svg>
+              </div>
+              <div class="info-content">
+                <span class="info-label">Last Update</span>
+                <span id="gameLastUpdate" class="info-value"></span>
+              </div>
+            </div>
+            <div class="info-item">
+              <div class="info-icon-wrapper">
+                <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                  <path d="M2 17l10 5 10-5" />
+                  <path d="M2 12l10 5 10-5" />
+                </svg>
+              </div>
+              <div class="info-content">
+                <span class="info-label">App ID</span>
+                <span id="gameId" class="info-value"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Screenshots -->
+          <div id="screenshotsSection" class="screenshots-section hidden">
+            <h3 class="section-title">
+              <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21,15 16,10 5,21" />
+              </svg>
+              Screenshots
+            </h3>
+            <div id="screenshotsGrid" class="screenshots-grid"></div>
+          </div>
+
+          <!-- Prices Section -->
+          <div id="pricesSection" class="prices-section hidden">
+            <h3 class="section-title">
+              <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="1" x2="12" y2="23" />
+                <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+              </svg>
+              Regional Prices
+            </h3>
+            <div id="pricesGrid" class="prices-grid"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Built with 💜 using Electron & SteamDB-JS</p>
+    </footer>
+  </div>
+
+  <script type="module" src="/src/renderer.ts"></script>
+</body>
+
+</html>

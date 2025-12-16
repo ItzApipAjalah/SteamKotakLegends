@@ -1,0 +1,39 @@
+{
+    "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+    "appId": "com.kotaklegends.steamexplorer",
+    "productName": "SteamKotakLegends",
+    "directories": {
+        "output": "dist",
+        "buildResources": "build"
+    },
+    "files": [
+        ".vite/**/*",
+        "package.json"
+    ],
+    "win": {
+        "target": [
+            {
+                "target": "nsis",
+                "arch": [
+                    "x64"
+                ]
+            }
+        ],
+        "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "nsis": {
+        "oneClick": false,
+        "allowToChangeInstallationDirectory": true,
+        "createDesktopShortcut": true,
+        "createStartMenuShortcut": true,
+        "shortcutName": "SteamKotakLegends",
+        "include": "build/installer.nsh",
+        "license": "LICENSE.txt",
+        "warningsAsErrors": false,
+        "runAfterFinish": true,
+        "deleteAppDataOnUninstall": false
+    },
+    "extraMetadata": {
+        "main": ".vite/build/main.js"
+    }
+}
