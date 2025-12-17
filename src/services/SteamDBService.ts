@@ -182,4 +182,80 @@ export class SteamDBService {
             return 0;
         }
     }
+    /**
+     * Search for games by name using Steam's search API
+     * @param query - Search query string
+     * @returns Array of matching games (up to 25 results)
+     */
+    static async searchByName(query: string): Promise<Array<{ appId: number; name: string; imageUrl?: string; type?: string }>> {
+        try {
+            // Use Steam's storesearch API which returns JSON with more results
+            const url = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(query)}&l=english&cc=us`;
+
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const json = await response.json();
+            const results: Array<{ appId: number; name: string; imageUrl?: string; type?: string }> = [];
+
+            if (json.items && Array.isArray(json.items)) {
+                for (const item of json.items) {
+                    if (item.id && item.name) {
+                        results.push({
+                            appId: item.id,
+                            name: item.name,
+                            imageUrl: item.tiny_image || `https://cdn.cloudflare.steamstatic.com/steam/apps/${item.id}/header.jpg`,
+                            type: item.type || 'Game'
+                        });
+                    }
+                }
+            }
+
+            // console.log(`[SteamDBService] Found ${results.length} results for "${query}"`);
+
+            if (results.length === 0) {
+                return this.searchByNameSuggest(query);
+            }
+
+            return results;
+        } catch (error) {
+            console.error('SteamDBService searchByName Error:', error);
+            return this.searchByNameSuggest(query);
+        }
+    }
+
+    /**
+     * Fallback: Search using Steam's suggest API
+     */
+    private static async searchByNameSuggest(query: string): Promise<Array<{ appId: number; name: string; imageUrl?: string; type?: string }>> {
+        try {
+            const url = `https://store.steampowered.com/search/suggest?term=${encodeURIComponent(query)}&f=games&cc=us&realm=1&l=english`;
+
+            const response = await fetch(url);
+            if (!response.ok) return [];
+
+            const html = await response.text();
+            const results: Array<{ appId: number; name: string; imageUrl?: string; type?: string }> = [];
+
+            const matchRegex = /<a[^>]*data-ds-appid="(\d+)"[^>]*>[\s\S]*?<div class="match_name">([^<]+)<\/div>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*>/gi;
+
+            let match;
+            while ((match = matchRegex.exec(html)) !== null) {
+                const appId = parseInt(match[1], 10);
+                const name = match[2].trim();
+                const imageUrl = match[3];
+
+                if (appId && name) {
+                    results.push({ appId, name, imageUrl, type: 'Game' });
+                }
+            }
+
+            return results;
+        } catch {
+            return [];
+        }
+    }
 }

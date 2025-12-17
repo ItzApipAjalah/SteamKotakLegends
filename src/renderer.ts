@@ -3,7 +3,7 @@
  */
 
 import './index.css';
-import type { FullGameData, SearchGameResponse } from './models/GameModel';
+import type { FullGameData, SearchGameResponse, SearchByNameResponse, GameSearchResult } from './models/GameModel';
 
 // DOM Elements
 const gameIdInput = document.getElementById('gameIdInput') as HTMLInputElement;
@@ -13,6 +13,9 @@ const errorSection = document.getElementById('errorSection') as HTMLElement;
 const errorMessage = document.getElementById('errorMessage') as HTMLElement;
 const retryBtn = document.getElementById('retryBtn') as HTMLButtonElement;
 const resultSection = document.getElementById('resultSection') as HTMLElement;
+const searchResultsSection = document.getElementById('searchResultsSection') as HTMLElement;
+const searchResultsList = document.getElementById('searchResultsList') as HTMLElement;
+const closeSearchResults = document.getElementById('closeSearchResults') as HTMLButtonElement;
 
 // Game info elements
 const gameLogo = document.getElementById('gameLogo') as HTMLImageElement;
@@ -68,6 +71,7 @@ function showLoading(): void {
   loadingSection.classList.remove('hidden');
   errorSection.classList.add('hidden');
   resultSection.classList.add('hidden');
+  searchResultsSection?.classList.add('hidden');
   searchBtn.disabled = true;
 
   // Reset Online Fix UI when switching games
@@ -93,6 +97,7 @@ function showError(message: string): void {
   hideLoading();
   errorSection.classList.remove('hidden');
   resultSection.classList.add('hidden');
+  searchResultsSection?.classList.add('hidden');
   errorMessage.textContent = message;
 }
 
@@ -217,44 +222,123 @@ function displayGameData(data: FullGameData): void {
 }
 
 /**
- * Search for game by ID
+ * Display search results for name search
  */
-async function searchGame(): Promise<void> {
-  const inputValue = gameIdInput.value.trim();
-  const gameIdNumber = parseInt(inputValue, 10);
+function displaySearchResults(results: GameSearchResult[]): void {
+  hideLoading();
+  searchResultsSection.classList.remove('hidden');
+  resultSection.classList.add('hidden');
+  errorSection.classList.add('hidden');
 
-  if (!inputValue || isNaN(gameIdNumber) || gameIdNumber <= 0) {
-    showError('Please enter a valid Steam App ID (positive number).');
+  if (results.length === 0) {
+    searchResultsList.innerHTML = `
+      <div class="search-no-results">
+        No games found. Try a different search term or use an App ID.
+      </div>
+    `;
     return;
   }
 
+  searchResultsList.innerHTML = results
+    .map(
+      (game) => `
+      <div class="search-result-item" data-appid="${game.appId}">
+        <img class="search-result-image" src="${game.imageUrl || ''}" alt="${game.name}" onerror="this.style.display='none'">
+        <div class="search-result-info">
+          <div class="search-result-name">${game.name}</div>
+          <div class="search-result-appid">App ID: ${game.appId}</div>
+        </div>
+      </div>
+    `
+    )
+    .join('');
+
+  // Add click handlers
+  searchResultsList.querySelectorAll('.search-result-item').forEach((item) => {
+    item.addEventListener('click', () => {
+      const appId = (item as HTMLElement).dataset.appid;
+      if (appId) {
+        loadGameById(parseInt(appId, 10));
+      }
+    });
+  });
+}
+
+/**
+ * Load game by App ID (used after selecting from search results)
+ */
+async function loadGameById(appId: number): Promise<void> {
   showLoading();
+  searchResultsSection?.classList.add('hidden');
 
   try {
-    const response: SearchGameResponse = await window.steamAPI.searchGame(gameIdNumber);
+    const response: SearchGameResponse = await window.steamAPI.searchGame(appId);
 
     if (response.success && response.data) {
       displayGameData(response.data);
 
-      // Set current game ID for library operations
-      const gameId = String(gameIdNumber);
-      (window as any).currentSearchedGameId = gameId;
+      const gameIdStr = String(appId);
+      (window as any).currentSearchedGameId = gameIdStr;
 
-      // Hide any previous notifications
       libraryStatus.classList.add('hidden');
       const sidebarNotification = document.getElementById('sidebarNotification');
       if (sidebarNotification) {
         sidebarNotification.classList.add('hidden');
       }
 
-      // Update button based on library status
-      await updateLibraryButton(gameId);
+      await updateLibraryButton(gameIdStr);
     } else {
-      showError(response.error || 'Failed to fetch game data. Please try again.');
+      showError(response.error || 'Failed to fetch game data.');
     }
   } catch (error) {
-    console.error('Search error:', error);
-    showError('An unexpected error occurred. Please check your connection and try again.');
+    console.error('Load game error:', error);
+    showError('An unexpected error occurred.');
+  }
+}
+
+/**
+ * Search for game by ID or Name
+ */
+async function searchGame(): Promise<void> {
+  const inputValue = gameIdInput.value.trim();
+
+  if (!inputValue) {
+    showError('Please enter a game name or App ID.');
+    return;
+  }
+
+  // Check if input is a number (App ID) or text (game name)
+  const isAppId = /^\d+$/.test(inputValue);
+
+  if (isAppId) {
+    // Direct App ID search
+    const gameIdNumber = parseInt(inputValue, 10);
+    if (gameIdNumber <= 0) {
+      showError('Please enter a valid App ID.');
+      return;
+    }
+    await loadGameById(gameIdNumber);
+  } else {
+    // Name search - show results list
+    if (inputValue.length < 2) {
+      showError('Please enter at least 2 characters to search by name.');
+      return;
+    }
+
+    showLoading();
+
+    try {
+      const response: SearchByNameResponse = await window.steamAPI.searchGameByName(inputValue);
+
+      if (response.success && response.results) {
+        displaySearchResults(response.results);
+      } else {
+        showError(response.error || 'Failed to search games.');
+      }
+    } catch (error) {
+      console.error('Name search error:', error);
+      showError('An unexpected error occurred while searching.');
+    }
   }
 }
 
@@ -271,6 +355,13 @@ retryBtn.addEventListener('click', () => {
   errorSection.classList.add('hidden');
   gameIdInput.focus();
 });
+
+// Close search results button
+if (closeSearchResults) {
+  closeSearchResults.addEventListener('click', () => {
+    searchResultsSection.classList.add('hidden');
+  });
+}
 
 // Hint button click handlers
 hintButtons.forEach((btn) => {

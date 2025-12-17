@@ -54,3 +54,21 @@ export interface SearchGameResponse {
     data?: FullGameData;
     error?: string;
 }
+
+// Search by name types
+export interface GameSearchResult {
+    appId: number;
+    name: string;
+    imageUrl?: string;
+    type?: string;
+}
+
+export interface SearchByNameRequest {
+    query: string;
+}
+
+export interface SearchByNameResponse {
+    success: boolean;
+    results?: GameSearchResult[];
+    error?: string;
+}

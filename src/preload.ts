@@ -3,7 +3,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { SearchGameResponse } from './models/GameModel';
+import { SearchGameResponse, SearchByNameResponse } from './models/GameModel';
 import { SteamAccountsResponse } from './models/SteamAccountModel';
 
 // Types for SteamTools
@@ -47,6 +47,13 @@ contextBridge.exposeInMainWorld('steamAPI', {
      */
     searchGame: (gameId: number, region?: string): Promise<SearchGameResponse> => {
         return ipcRenderer.invoke('search-game', { gameId, region });
+    },
+
+    /**
+     * Search for games by name
+     */
+    searchGameByName: (query: string): Promise<SearchByNameResponse> => {
+        return ipcRenderer.invoke('search-game-by-name', { query });
     },
 
     /**
@@ -177,6 +184,7 @@ interface OnlineFixDownloadResult {
 // Type declaration for renderer process
 export interface SteamAPI {
     searchGame: (gameId: number, region?: string) => Promise<SearchGameResponse>;
+    searchGameByName: (query: string) => Promise<SearchByNameResponse>;
     getAccounts: () => Promise<SteamAccountsResponse>;
     checkSteamTools: () => Promise<SteamToolsStatus>;
     downloadSteamTools: () => Promise<DownloadResult>;

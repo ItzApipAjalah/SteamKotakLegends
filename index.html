@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SteamDB Explorer</title>
+  <title>SteamKotakLegends Explorer</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
     rel="stylesheet">
 </head>
@@ -17,7 +17,7 @@
         <path d="M3 12h18M3 6h18M3 18h18" />
       </svg>
     </button>
-    <span class="titlebar-title">🎮 SteamDB Explorer</span>
+    <span class="titlebar-title">🎮 SteamKotakLegends Explorer</span>
   </div>
 
   <div class="app-container">
@@ -139,12 +139,12 @@
               <circle cx="11" cy="11" r="8" />
               <path d="M21 21l-4.35-4.35" />
             </svg>
-            Search Game by Steam App ID
+            Search Game by Name or App ID
           </h2>
           <div class="search-form">
             <div class="input-wrapper">
-              <input type="number" id="gameIdInput" class="search-input"
-                placeholder="Enter Steam App ID (e.g., 271590 for GTA V)" min="1" />
+              <input type="text" id="gameIdInput" class="search-input"
+                placeholder="Enter game name or App ID (e.g., Monster Hunter or 271590)" />
               <div class="input-glow"></div>
             </div>
             <button id="searchBtn" class="search-btn">
@@ -165,6 +165,21 @@
         </div>
       </section>
 
+      <!-- Search Results Section (for name search) -->
+      <section id="searchResultsSection" class="search-results-section hidden">
+        <div class="search-results-card">
+          <div class="search-results-header">
+            <h3>Select a game:</h3>
+            <button id="closeSearchResults" class="close-results-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div id="searchResultsList" class="search-results-list"></div>
+        </div>
+      </section>
+
       <!-- Loading State -->
       <section id="loadingSection" class="loading-section hidden">
         <div class="loading-card">
@@ -173,7 +188,7 @@
             <div class="loader-ring"></div>
             <div class="loader-ring"></div>
           </div>
-          <p class="loading-text">Fetching game data from SteamDB...</p>
+          <p class="loading-text">Fetching game data from SteamKotakLegends...</p>
         </div>
       </section>
 
@@ -355,7 +370,7 @@
 
     <!-- Footer -->
     <footer class="footer">
-      <p>Built with 💜 using Electron & SteamDB-JS</p>
+      <p>Muka Mu Hitam</p>
     </footer>
   </div>
 

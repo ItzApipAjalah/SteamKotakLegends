@@ -4,7 +4,7 @@
 
 import { ipcMain } from 'electron';
 import { SteamDBService } from '../services/SteamDBService';
-import { SearchGameRequest, SearchGameResponse } from '../models/GameModel';
+import { SearchGameRequest, SearchGameResponse, SearchByNameRequest, SearchByNameResponse } from '../models/GameModel';
 
 export class GameController {
     /**
@@ -34,6 +34,33 @@ export class GameController {
                 return {
                     success: false,
                     error: (error as Error).message || 'Failed to fetch game data',
+                };
+            }
+        });
+
+        // Handler for searching games by name
+        ipcMain.handle('search-game-by-name', async (_event, request: SearchByNameRequest): Promise<SearchByNameResponse> => {
+            try {
+                const { query } = request;
+
+                if (!query || query.trim().length < 2) {
+                    return {
+                        success: false,
+                        error: 'Please enter at least 2 characters to search.',
+                    };
+                }
+
+                const results = await SteamDBService.searchByName(query);
+
+                return {
+                    success: true,
+                    results,
+                };
+            } catch (error) {
+                console.error('GameController searchByName Error:', error);
+                return {
+                    success: false,
+                    error: (error as Error).message || 'Failed to search games',
                 };
             }
         });
