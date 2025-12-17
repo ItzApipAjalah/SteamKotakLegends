@@ -958,6 +958,25 @@ async function downloadOnlineFix(): Promise<void> {
     onlineFixStatus.textContent = '⏳ Downloading Online Fix... This may take a while.';
   }
 
+  // Show progress section and listen for progress updates
+  const onlineFixProgress = document.getElementById('onlineFixProgress');
+  const onlineFixProgressFill = document.getElementById('onlineFixProgressFill');
+  const onlineFixProgressText = document.getElementById('onlineFixProgressText');
+
+  if (onlineFixProgress) {
+    onlineFixProgress.classList.remove('hidden');
+  }
+
+  // Listen for progress updates
+  window.steamAPI.onOnlineFixProgress((progress) => {
+    if (onlineFixProgressFill) {
+      onlineFixProgressFill.style.width = `${progress.percent}%`;
+    }
+    if (onlineFixProgressText) {
+      onlineFixProgressText.textContent = progress.step;
+    }
+  });
+
   try {
     // First try auto-detect game path
     let gamePath = await window.steamAPI.getGamePath(fixData.gameName);
@@ -1012,6 +1031,13 @@ async function downloadOnlineFix(): Promise<void> {
       onlineFixStatus.className = 'library-status error';
       onlineFixStatus.textContent = '❌ An error occurred during download';
     }
+  }
+
+  // Hide progress section after completion
+  if (onlineFixProgress) {
+    setTimeout(() => {
+      onlineFixProgress.classList.add('hidden');
+    }, 2000);
   }
 
   resetOnlineFixButton(onlineFixDownloadBtn);

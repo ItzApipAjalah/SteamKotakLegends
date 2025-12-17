@@ -1,21 +1,8 @@
 ; Custom NSIS installer script for SteamKotakLegends
-; This adds custom UI elements and behavior
-
-!macro customHeader
-  !system "echo 'Building SteamKotakLegends Installer...'"
-!macroend
-
-!macro preInit
-  ; Set custom colors
-  SetCtlColors $HWNDPARENT 0xFFFFFF 0x1a1a3e
-!macroend
-
-!macro customInit
-  ; Custom initialization
-!macroend
+; Minimal configuration to avoid issues
 
 !macro customInstall
-  ; Create additional shortcuts or perform custom actions
+  ; Create desktop shortcut
   CreateShortCut "$DESKTOP\SteamKotakLegends.lnk" "$INSTDIR\SteamKotakLegends.exe"
 !macroend
 

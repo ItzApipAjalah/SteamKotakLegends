@@ -749,6 +749,37 @@ body {
   height: 20px;
 }
 
+/* OnlineFix Progress */
+.onlinefix-progress {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(15, 15, 35, 0.6);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+}
+
+.onlinefix-progress-bar {
+  height: 8px;
+  background: rgba(59, 130, 246, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.onlinefix-progress-bar .progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.onlinefix-progress-text {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
 .library-status .restart-btn {
   display: inline-flex;
   align-items: center;

@@ -69,12 +69,24 @@ export class SteamToolsController {
 
         // Download and install online fix
         ipcMain.handle('download-onlinefix', async (
-            _event,
+            event,
             fixUrl: string,
             gameName: string,
             customPath?: string
         ): Promise<OnlineFixDownloadResult> => {
-            return OnlineFixDownloadService.downloadOnlineFix(fixUrl, gameName, customPath);
+            const window = BrowserWindow.fromWebContents(event.sender);
+
+            return OnlineFixDownloadService.downloadOnlineFix(
+                fixUrl,
+                gameName,
+                customPath,
+                (progress) => {
+                    // Send progress to renderer
+                    if (window) {
+                        window.webContents.send('onlinefix-progress', progress);
+                    }
+                }
+            );
         });
 
         // Get game installation path

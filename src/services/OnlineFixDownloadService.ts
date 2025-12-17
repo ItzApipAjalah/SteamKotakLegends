@@ -7,11 +7,15 @@ import { BrowserWindow, app, session } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { exec } from 'child_process';
+import * as https from 'https';
 
 const STEAM_PATH = 'C:\\Program Files (x86)\\Steam';
 const STEAMAPPS_COMMON = path.join(STEAM_PATH, 'steamapps', 'common');
 const CACHE_PATH = path.join(app.getPath('userData'), 'onlinefix');
-const COOKIE_PATH = path.join(__dirname, '../cookie/online-fix.me_cookies.json');
+
+// API Configuration
+const COOKIE_API_URL = process.env.COOKIE_API_URL || 'https://cookies.kotaklegend.my.id';
+const COOKIE_API_TOKEN = process.env.COOKIE_API_TOKEN || '';
 
 export interface OnlineFixDownloadResult {
     success: boolean;
@@ -20,8 +24,24 @@ export interface OnlineFixDownloadResult {
     downloadedFile?: string;
 }
 
+export interface OnlineFixProgress {
+    step: string;
+    percent: number;
+}
+
 export class OnlineFixDownloadService {
     private static downloadWindow: BrowserWindow | null = null;
+    private static progressCallback: ((progress: OnlineFixProgress) => void) | null = null;
+
+    /**
+     * Send progress update to renderer
+     */
+    private static sendProgress(step: string, percent: number): void {
+        if (this.progressCallback) {
+            this.progressCallback({ step, percent });
+        }
+        console.log(`[OnlineFixDownload] ${step} (${percent}%)`);
+    }
 
     /**
      * Initialize cache directory
@@ -30,74 +50,144 @@ export class OnlineFixDownloadService {
         if (!fs.existsSync(CACHE_PATH)) {
             fs.mkdirSync(CACHE_PATH, { recursive: true });
         }
+        // Load environment variables from .env file
+        this.loadEnv();
     }
 
     /**
-     * Load cookies from JSON files and set them in session
+     * Load environment variables from .env file
+     */
+    private static loadEnv(): void {
+        const envPaths = [
+            path.join(app.getAppPath(), '.env'),
+            path.join(process.cwd(), '.env'),
+            path.join(process.resourcesPath || '', '.env'),
+        ];
+
+        for (const envPath of envPaths) {
+            if (fs.existsSync(envPath)) {
+                const envContent = fs.readFileSync(envPath, 'utf8');
+                const lines = envContent.split('\n');
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (trimmed && !trimmed.startsWith('#')) {
+                        const [key, ...valueParts] = trimmed.split('=');
+                        const value = valueParts.join('=');
+                        if (key && value) {
+                            process.env[key.trim()] = value.trim();
+                        }
+                    }
+                }
+                console.log(`[OnlineFixDownload] Loaded env from: ${envPath}`);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Fetch cookies from API endpoint
+     */
+    private static async fetchCookiesFromAPI(endpoint: string): Promise<any[]> {
+        return new Promise((resolve, reject) => {
+            const token = process.env.COOKIE_API_TOKEN || COOKIE_API_TOKEN;
+            const apiUrl = process.env.COOKIE_API_URL || COOKIE_API_URL;
+            const url = `${apiUrl}/${endpoint}`;
+
+            const postData = `token=${encodeURIComponent(token)}`;
+
+            const urlObj = new URL(url);
+            const options = {
+                hostname: urlObj.hostname,
+                port: urlObj.port || 443,
+                path: urlObj.pathname,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Content-Length': Buffer.byteLength(postData),
+                },
+            };
+
+            console.log(`[OnlineFixDownload] Fetching cookies from: ${url}`);
+
+            const req = https.request(options, (res) => {
+                let data = '';
+                res.on('data', (chunk) => { data += chunk; });
+                res.on('end', () => {
+                    try {
+                        const json = JSON.parse(data);
+                        // Handle both formats: { success, cookies } and { cookies } directly
+                        if (json.cookies && Array.isArray(json.cookies)) {
+                            console.log(`[OnlineFixDownload] Got ${json.cookies.length} cookies from API`);
+                            resolve(json.cookies);
+                        } else if (json.success && json.cookies) {
+                            console.log(`[OnlineFixDownload] Got ${json.cookies.length} cookies from API`);
+                            resolve(json.cookies);
+                        } else {
+                            console.error('[OnlineFixDownload] API response error:', json);
+                            resolve([]);
+                        }
+                    } catch (e) {
+                        console.error('[OnlineFixDownload] Failed to parse API response:', e);
+                        resolve([]);
+                    }
+                });
+            });
+
+            req.on('error', (e) => {
+                console.error('[OnlineFixDownload] API request error:', e);
+                resolve([]);
+            });
+
+            req.write(postData);
+            req.end();
+        });
+    }
+
+    /**
+     * Load cookies from API and set them in session
      */
     private static async loadCookies(windowSession: Electron.Session): Promise<void> {
         try {
-            // Cookie file paths
-            const mainCookiePaths = [
-                COOKIE_PATH,
-                path.join(app.getAppPath(), 'src/cookie/online-fix.me_cookies.json'),
-                path.join(process.cwd(), 'src/cookie/online-fix.me_cookies.json'),
-            ];
-
-            const uploadCookiePaths = [
-                path.join(__dirname, '../cookie/up_cookies.json'),
-                path.join(app.getAppPath(), 'src/cookie/up_cookies.json'),
-                path.join(process.cwd(), 'src/cookie/up_cookies.json'),
-            ];
-
-            // Load main domain cookies
-            for (const p of mainCookiePaths) {
-                if (fs.existsSync(p)) {
-                    console.log(`[OnlineFixDownload] Loading main cookies from: ${p}`);
-                    const cookies = JSON.parse(fs.readFileSync(p, 'utf8'));
-                    await this.setCookiesForDomains(windowSession, cookies, ['online-fix.me']);
-                    break;
-                }
+            // Fetch main domain cookies from API
+            const mainCookies = await this.fetchCookiesFromAPI('online-fix.me_cookies');
+            if (mainCookies.length > 0) {
+                await this.setCookiesForDomains(windowSession, mainCookies, ['online-fix.me']);
+                console.log('[OnlineFixDownload] Main domain cookies loaded from API');
             }
 
-            // Load upload subdomain cookies
-            for (const p of uploadCookiePaths) {
-                if (fs.existsSync(p)) {
-                    console.log(`[OnlineFixDownload] Loading upload cookies from: ${p}`);
-                    const cookies = JSON.parse(fs.readFileSync(p, 'utf8'));
+            // Fetch upload subdomain cookies from API
+            const uploadCookies = await this.fetchCookiesFromAPI('up_cookies');
+            if (uploadCookies.length > 0) {
+                for (const cookie of uploadCookies) {
+                    try {
+                        // For uploads.online-fix.me:2053
+                        await windowSession.cookies.set({
+                            url: 'https://uploads.online-fix.me:2053',
+                            name: cookie.name,
+                            value: cookie.value,
+                            domain: cookie.domain,
+                            path: cookie.path || '/',
+                            secure: true,
+                            httpOnly: cookie.httpOnly || false,
+                        });
 
-                    // Set cookies for uploads subdomain with port
-                    for (const cookie of cookies) {
-                        try {
-                            // For uploads.online-fix.me:2053
-                            await windowSession.cookies.set({
-                                url: 'https://uploads.online-fix.me:2053',
-                                name: cookie.name,
-                                value: cookie.value,
-                                domain: cookie.domain,
-                                path: cookie.path || '/',
-                                secure: true,
-                                httpOnly: cookie.httpOnly || false,
-                            });
-
-                            // Also try without port
-                            await windowSession.cookies.set({
-                                url: 'https://uploads.online-fix.me',
-                                name: cookie.name,
-                                value: cookie.value,
-                                domain: cookie.domain,
-                                path: '/',
-                                secure: true,
-                            });
-                        } catch (e) { }
-                    }
-                    break;
+                        // Also try without port
+                        await windowSession.cookies.set({
+                            url: 'https://uploads.online-fix.me',
+                            name: cookie.name,
+                            value: cookie.value,
+                            domain: cookie.domain,
+                            path: '/',
+                            secure: true,
+                        });
+                    } catch (e) { }
                 }
+                console.log('[OnlineFixDownload] Upload domain cookies loaded from API');
             }
 
-            console.log('[OnlineFixDownload] Cookies loaded successfully for all domains');
+            console.log('[OnlineFixDownload] All cookies loaded successfully from API');
         } catch (error) {
-            console.error('[OnlineFixDownload] Failed to load cookies:', error);
+            console.error('[OnlineFixDownload] Failed to load cookies from API:', error);
         }
     }
 
@@ -166,10 +256,13 @@ export class OnlineFixDownloadService {
     static async downloadOnlineFix(
         fixUrl: string,
         gameName: string,
-        customPath?: string
+        customPath?: string,
+        onProgress?: (progress: OnlineFixProgress) => void
     ): Promise<OnlineFixDownloadResult> {
         this.init();
+        this.progressCallback = onProgress || null;
 
+        this.sendProgress('Initializing...', 0);
         console.log(`[OnlineFixDownload] Starting download for: ${gameName}`);
         console.log(`[OnlineFixDownload] Fix URL: ${fixUrl}`);
 
@@ -181,13 +274,14 @@ export class OnlineFixDownloadService {
         }
 
         console.log(`[OnlineFixDownload] Game path: ${gamePath}`);
+        this.sendProgress('Loading cookies from API...', 10);
 
         return new Promise(async (resolve) => {
             // Create browser window (visible for debugging)
             this.downloadWindow = new BrowserWindow({
                 width: 1024,
                 height: 768,
-                show: true, // Show for debugging
+                show: false,
                 webPreferences: {
                     nodeIntegration: false,
                     contextIsolation: true,
@@ -197,6 +291,7 @@ export class OnlineFixDownloadService {
             const win = this.downloadWindow;
 
             // Load cookies into this window's session
+            this.sendProgress('Loading cookies...', 15);
             await this.loadCookies(win.webContents.session);
             let downloadStarted = false;
             let resolved = false;
@@ -215,6 +310,7 @@ export class OnlineFixDownloadService {
             const ses = win.webContents.session;
             ses.on('will-download', (event, item) => {
                 const filename = item.getFilename();
+                this.sendProgress(`Downloading: ${filename}`, 75);
                 console.log(`[OnlineFixDownload] Download started: ${filename}`);
                 downloadStarted = true;
 
@@ -227,10 +323,12 @@ export class OnlineFixDownloadService {
                     clearTimeout(timeoutId);
 
                     if (state === 'completed') {
+                        this.sendProgress('Download complete, extracting...', 90);
                         console.log(`[OnlineFixDownload] Download completed: ${savePath}`);
 
                         // Extract and install
                         const installResult = await this.extractAndInstall(savePath, gamePath);
+                        this.sendProgress('Installation complete!', 100);
                         this.cleanup();
                         resolve(installResult);
                     } else {
@@ -241,20 +339,40 @@ export class OnlineFixDownloadService {
                 });
             });
 
+            // Handle new window popup (when clicking target="_blank" links)
+            win.webContents.setWindowOpenHandler(({ url }) => {
+                console.log(`[OnlineFixDownload] Popup opened: ${url}`);
+                if (url.includes('uploads.online-fix.me')) {
+                    // Allow the popup and navigate main window to it after auth
+                    setTimeout(async () => {
+                        try {
+                            await win.loadURL(url);
+                        } catch (e) {
+                            console.log('[OnlineFixDownload] Popup navigation handled');
+                        }
+                    }, 1000);
+                }
+                return { action: 'deny' }; // Deny popup, we'll handle it in main window
+            });
+
             // Navigate to fix page and find download link
+            this.sendProgress('Loading Online-Fix page...', 20);
             win.loadURL(fixUrl).then(async () => {
+                this.sendProgress('Searching for download link...', 30);
                 console.log('[OnlineFixDownload] Page loaded, searching for fix link...');
 
                 // Wait for page to load
                 await this.delay(3000);
 
                 try {
-                    // Find the uploads link (Скачать фикс с сервера)
-                    const uploadsLink = await win.webContents.executeJavaScript(`
+                    // Find and CLICK the uploads button (Скачать фикс с сервера) instead of just navigating
+                    const buttonClicked = await win.webContents.executeJavaScript(`
                         (() => {
                             const links = document.querySelectorAll('a.btn-success');
                             for (const link of links) {
                                 if (link.href && link.href.includes('uploads.online-fix.me')) {
+                                    console.log('Clicking uploads button:', link.href);
+                                    link.click();
                                     return link.href;
                                 }
                             }
@@ -262,7 +380,7 @@ export class OnlineFixDownloadService {
                         })()
                     `);
 
-                    if (!uploadsLink) {
+                    if (!buttonClicked) {
                         if (!resolved) {
                             resolved = true;
                             clearTimeout(timeoutId);
@@ -272,14 +390,18 @@ export class OnlineFixDownloadService {
                         return;
                     }
 
-                    console.log(`[OnlineFixDownload] Found uploads link: ${uploadsLink}`);
+                    this.sendProgress('Navigating to uploads server...', 40);
+                    console.log(`[OnlineFixDownload] Clicked uploads button: ${buttonClicked}`);
 
-                    // Navigate to uploads page
-                    await win.loadURL(uploadsLink);
+                    // Wait for navigation/popup handling
+                    await this.delay(3000);
+
+                    // Now navigate to the uploads page (the click may have set auth cookies)
+                    await win.loadURL(buttonClicked);
                     await this.delay(2000);
 
                     // Log all links on page for debugging
-                    const allLinks = await win.webContents.executeJavaScript(`
+                    let allLinks = await win.webContents.executeJavaScript(`
                         (() => {
                             const links = [];
                             document.querySelectorAll('a').forEach(a => {
@@ -290,6 +412,48 @@ export class OnlineFixDownloadService {
                     `);
                     console.log('[OnlineFixDownload] Links on page:', allLinks);
 
+                    // If no links found (401 error), try fetching new cookies from up_fix endpoint
+                    if (allLinks.length === 0) {
+                        console.log('[OnlineFixDownload] No links found, retrying with up_fix cookies...');
+
+                        // Fetch cookies from up_fix endpoint
+                        const upFixCookies = await this.fetchCookiesFromAPI('up_fix');
+                        if (upFixCookies.length > 0) {
+                            // Set the new cookies
+                            for (const cookie of upFixCookies) {
+                                try {
+                                    await win.webContents.session.cookies.set({
+                                        url: 'https://uploads.online-fix.me:2053',
+                                        name: cookie.name,
+                                        value: cookie.value,
+                                        domain: cookie.domain,
+                                        path: cookie.path || '/',
+                                        secure: true,
+                                        httpOnly: cookie.httpOnly || false,
+                                    });
+                                } catch (e) { }
+                            }
+                            console.log('[OnlineFixDownload] up_fix cookies loaded, retrying...');
+
+                            // Reload the page with new cookies
+                            await win.loadURL(buttonClicked);
+                            await this.delay(2000);
+
+                            // Check links again
+                            allLinks = await win.webContents.executeJavaScript(`
+                                (() => {
+                                    const links = [];
+                                    document.querySelectorAll('a').forEach(a => {
+                                        if (a.href) links.push(a.href);
+                                    });
+                                    return links;
+                                })()
+                            `);
+                            console.log('[OnlineFixDownload] Links on page after retry:', allLinks);
+                        }
+                    }
+
+                    this.sendProgress('Looking for Fix Repair folder...', 50);
                     // FIRST: Look for Fix Repair folder and navigate to it
                     const fixRepairLink = await win.webContents.executeJavaScript(`
                         (() => {
@@ -309,9 +473,11 @@ export class OnlineFixDownloadService {
                     let archiveLink: string | null = null;
 
                     if (fixRepairLink) {
+                        this.sendProgress('Navigating to Fix Repair folder...', 55);
                         console.log('[OnlineFixDownload] Found Fix Repair folder, navigating...');
                         await win.loadURL(fixRepairLink);
                         await this.delay(2000);
+                        this.sendProgress('Searching for archive...', 60);
                         console.log('[OnlineFixDownload] Now in Fix Repair folder');
                         archiveLink = await this.findArchiveOnPage(win);
                     }
@@ -319,7 +485,7 @@ export class OnlineFixDownloadService {
                     // If no archive yet, try main page
                     if (!archiveLink) {
                         if (fixRepairLink) {
-                            await win.loadURL(uploadsLink);
+                            await win.loadURL(buttonClicked);
                             await this.delay(1000);
                         }
                         archiveLink = await this.findArchiveOnPage(win);
@@ -335,6 +501,7 @@ export class OnlineFixDownloadService {
                         return;
                     }
 
+                    this.sendProgress('Starting download...', 70);
                     console.log(`[OnlineFixDownload] Found archive: ${archiveLink}`);
 
                     // Click the archive link to trigger download (don't use loadURL which errors on downloads)

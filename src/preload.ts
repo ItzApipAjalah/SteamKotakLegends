@@ -149,7 +149,22 @@ contextBridge.exposeInMainWorld('steamAPI', {
     selectFolder: (): Promise<string | null> => {
         return ipcRenderer.invoke('select-folder');
     },
+
+    /**
+     * Listen for OnlineFix download progress
+     */
+    onOnlineFixProgress: (callback: (progress: OnlineFixProgress) => void): void => {
+        ipcRenderer.on('onlinefix-progress', (_event, progress) => {
+            callback(progress);
+        });
+    },
 });
+
+// OnlineFix progress interface
+interface OnlineFixProgress {
+    step: string;
+    percent: number;
+}
 
 // Online Fix download result interface
 interface OnlineFixDownloadResult {
@@ -175,6 +190,7 @@ export interface SteamAPI {
     downloadOnlineFix: (fixUrl: string, gameName: string, customPath?: string) => Promise<OnlineFixDownloadResult>;
     getGamePath: (gameName: string) => Promise<string | null>;
     selectFolder: () => Promise<string | null>;
+    onOnlineFixProgress: (callback: (progress: { step: string; percent: number }) => void) => void;
 }
 
 declare global {

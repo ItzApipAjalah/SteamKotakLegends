@@ -27,8 +27,6 @@
         "createDesktopShortcut": true,
         "createStartMenuShortcut": true,
         "shortcutName": "SteamKotakLegends",
-        "include": "build/installer.nsh",
-        "license": "LICENSE",
         "warningsAsErrors": false,
         "runAfterFinish": true,
         "deleteAppDataOnUninstall": false

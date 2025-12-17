@@ -10,11 +10,16 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    name: 'SteamKotakLegends Explorer',
+    name: 'SteamKotakLegends',
     executableName: 'SteamKotakLegends',
     appCopyright: 'Copyright © 2024 ItzApipAjalah',
-    // Uncomment and add icon path when you have one:
-    icon: './assets/icon',
+    icon: './assets/icon.ico',
+    // Prune dev dependencies
+    prune: true,
+    // Include extra resources (like cookie folder and .env)
+    extraResource: [
+      './src/cookie',
+    ],
   },
   rebuildConfig: {},
   makers: [
