@@ -218,6 +218,23 @@ export class SteamToolsService {
     }
 
     /**
+     * Close SteamTools process
+     */
+    static async closeSteamTools(): Promise<{ success: boolean; error?: string }> {
+        return new Promise((resolve) => {
+            const { exec } = require('child_process');
+
+            // Kill SteamTools process
+            exec('taskkill /F /IM SteamTools.exe /T', (error: any) => {
+                console.log('SteamTools process closed (or none running)');
+                setTimeout(() => {
+                    resolve({ success: true });
+                }, 500);
+            });
+        });
+    }
+
+    /**
      * Open SteamTools application
      */
     static async openSteamTools(): Promise<{ success: boolean; error?: string }> {
@@ -284,6 +301,10 @@ export class SteamToolsService {
                     try {
                         const error = await shell.openPath(steamPath);
                         if (!error) {
+                            // Wait a bit for Steam to start, then close SteamTools
+                            console.log('Steam opened, closing SteamTools...');
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            await this.closeSteamTools();
                             return { success: true, method: 'steamtools' };
                         }
                     } catch {
@@ -294,6 +315,10 @@ export class SteamToolsService {
                 // Try steam:// protocol
                 try {
                     await shell.openExternal('steam://open/main');
+                    // Wait a bit for Steam to start, then close SteamTools
+                    console.log('Steam opened via protocol, closing SteamTools...');
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    await this.closeSteamTools();
                     return { success: true, method: 'steamtools' };
                 } catch {
                     return { success: false, method: 'steamtools', error: 'Failed to open Steam' };
