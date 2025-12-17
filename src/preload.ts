@@ -57,6 +57,13 @@ contextBridge.exposeInMainWorld('steamAPI', {
     },
 
     /**
+     * Get popular games by category
+     */
+    getPopularGames: (category: 'top_sellers' | 'new_releases' | 'specials' | 'coming_soon' = 'top_sellers'): Promise<{ success: boolean; results: Array<{ appId: number; name: string; imageUrl?: string; discount?: string }> }> => {
+        return ipcRenderer.invoke('get-popular-games', category);
+    },
+
+    /**
      * Get local Steam accounts from the system
      */
     getAccounts: (): Promise<SteamAccountsResponse> => {
@@ -185,6 +192,7 @@ interface OnlineFixDownloadResult {
 export interface SteamAPI {
     searchGame: (gameId: number, region?: string) => Promise<SearchGameResponse>;
     searchGameByName: (query: string) => Promise<SearchByNameResponse>;
+    getPopularGames: (category?: 'top_sellers' | 'new_releases' | 'specials' | 'coming_soon') => Promise<{ success: boolean; results: Array<{ appId: number; name: string; imageUrl?: string; discount?: string }> }>;
     getAccounts: () => Promise<SteamAccountsResponse>;
     checkSteamTools: () => Promise<SteamToolsStatus>;
     downloadSteamTools: () => Promise<DownloadResult>;

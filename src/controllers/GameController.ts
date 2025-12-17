@@ -65,6 +65,17 @@ export class GameController {
             }
         });
 
+        // Handler for getting popular games
+        ipcMain.handle('get-popular-games', async (_event, category: 'most_played' | 'trending' = 'most_played') => {
+            try {
+                const results = await SteamDBService.getPopularGames(category);
+                return { success: true, results };
+            } catch (error) {
+                console.error('GameController getPopularGames Error:', error);
+                return { success: false, results: [], error: (error as Error).message };
+            }
+        });
+
         console.log('GameController: IPC handlers registered');
     }
 }

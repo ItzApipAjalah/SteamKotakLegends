@@ -258,4 +258,59 @@ export class SteamDBService {
             return [];
         }
     }
+
+    /**
+     * Get popular games by category
+     * Uses Steam's featured API
+     */
+    static async getPopularGames(category: 'top_sellers' | 'new_releases' | 'specials' | 'coming_soon' = 'top_sellers'): Promise<Array<{ appId: number; name: string; imageUrl?: string; discount?: string }>> {
+        try {
+            // Use Steam's featured categories API
+            const url = `https://store.steampowered.com/api/featuredcategories?cc=us&l=english`;
+
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const json = await response.json();
+            const results: Array<{ appId: number; name: string; imageUrl?: string; discount?: string }> = [];
+
+            // Get items based on category
+            let items: any[] = [];
+            switch (category) {
+                case 'top_sellers':
+                    items = json.top_sellers?.items || [];
+                    break;
+                case 'new_releases':
+                    items = json.new_releases?.items || [];
+                    break;
+                case 'specials':
+                    items = json.specials?.items || [];
+                    break;
+                case 'coming_soon':
+                    items = json.coming_soon?.items || [];
+                    break;
+                default:
+                    items = json.top_sellers?.items || [];
+                    break;
+            }
+
+            for (const item of items.slice(0, 15)) {
+                if (item.id && item.name) {
+                    results.push({
+                        appId: item.id,
+                        name: item.name,
+                        imageUrl: item.small_capsule_image || item.header_image || `https://cdn.cloudflare.steamstatic.com/steam/apps/${item.id}/header.jpg`,
+                        discount: item.discount_percent ? `-${item.discount_percent}%` : ''
+                    });
+                }
+            }
+
+            return results;
+        } catch (error) {
+            console.error('SteamDBService getPopularGames Error:', error);
+            return [];
+        }
+    }
 }

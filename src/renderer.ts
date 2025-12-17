@@ -117,6 +117,16 @@ function displayGameData(data: FullGameData): void {
   gameType.textContent = info.type || 'Game';
   gameName.textContent = info.name || 'Unknown Game';
 
+  // Hide "Add to Library" section for hardware items
+  const addLibrarySection = document.querySelector('.add-library-section') as HTMLElement;
+  if (addLibrarySection) {
+    if (info.type && info.type.toLowerCase() === 'hardware') {
+      addLibrarySection.classList.add('hidden');
+    } else {
+      addLibrarySection.classList.remove('hidden');
+    }
+  }
+
   // Add multiplayer badge if applicable
   const multiplayerBadge = document.getElementById('multiplayerBadge');
   if (multiplayerBadge) {
@@ -378,10 +388,16 @@ hintButtons.forEach((btn) => {
 // SIDEBAR TOGGLE
 // ========================================
 
+// Left sidebar - default to VISIBLE (false = not collapsed)
 let sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+// Right sidebar - default to VISIBLE (false = not collapsed)
+let rightSidebarCollapsed = localStorage.getItem('rightSidebarCollapsed') === 'true';
+
+const rightSidebar = document.getElementById('rightSidebar') as HTMLElement;
+const rightSidebarToggle = document.getElementById('rightSidebarToggle') as HTMLButtonElement;
 
 /**
- * Toggle sidebar visibility
+ * Toggle left sidebar visibility
  */
 function toggleSidebar(): void {
   sidebarCollapsed = !sidebarCollapsed;
@@ -389,23 +405,58 @@ function toggleSidebar(): void {
   if (sidebarCollapsed) {
     sidebar.classList.add('collapsed');
     mainContent.classList.add('expanded');
+    sidebarToggle?.classList.remove('active');
   } else {
     sidebar.classList.remove('collapsed');
     mainContent.classList.remove('expanded');
+    sidebarToggle?.classList.add('active');
   }
 
   // Persist state
   localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
 }
 
-// Initialize sidebar state
+/**
+ * Toggle right sidebar visibility
+ */
+function toggleRightSidebar(): void {
+  rightSidebarCollapsed = !rightSidebarCollapsed;
+
+  if (rightSidebarCollapsed) {
+    rightSidebar?.classList.add('collapsed');
+    mainContent.classList.add('right-expanded');
+    rightSidebarToggle?.classList.remove('active');
+  } else {
+    rightSidebar?.classList.remove('collapsed');
+    mainContent.classList.remove('right-expanded');
+    rightSidebarToggle?.classList.add('active');
+  }
+
+  // Persist state
+  localStorage.setItem('rightSidebarCollapsed', String(rightSidebarCollapsed));
+}
+
+// Initialize left sidebar state
 if (sidebarCollapsed) {
   sidebar.classList.add('collapsed');
   mainContent.classList.add('expanded');
+} else {
+  sidebarToggle?.classList.add('active');
 }
 
-// Sidebar toggle button
+// Initialize right sidebar state
+if (rightSidebarCollapsed) {
+  rightSidebar?.classList.add('collapsed');
+  mainContent.classList.add('right-expanded');
+} else {
+  rightSidebarToggle?.classList.add('active');
+}
+
+// Sidebar toggle buttons
 sidebarToggle.addEventListener('click', toggleSidebar);
+if (rightSidebarToggle) {
+  rightSidebarToggle.addEventListener('click', toggleRightSidebar);
+}
 
 // ========================================
 // SIDEBAR - Steam Accounts
@@ -1159,5 +1210,125 @@ if (onlineFixDownloadBtn) {
 
 // Initial focus
 gameIdInput.focus();
+
+// ========================================
+// RIGHT SIDEBAR - POPULAR GAMES
+// ========================================
+
+const popularGamesLoading = document.getElementById('popularGamesLoading') as HTMLElement;
+const popularGamesList = document.getElementById('popularGamesList') as HTMLElement;
+
+type GameCategory = 'top_sellers' | 'new_releases' | 'specials' | 'coming_soon';
+let currentCategory: GameCategory = 'top_sellers';
+
+// Category button references
+const categoryButtons: { [key in GameCategory]?: HTMLButtonElement } = {
+  top_sellers: document.getElementById('mostPlayedBtn') as HTMLButtonElement,
+  new_releases: document.getElementById('newReleasesBtn') as HTMLButtonElement,
+  specials: document.getElementById('specialsBtn') as HTMLButtonElement,
+  coming_soon: document.getElementById('comingSoonBtn') as HTMLButtonElement,
+};
+
+/**
+ * Load popular games from Steam
+ */
+async function loadPopularGames(category: GameCategory): Promise<void> {
+  if (!popularGamesList || !popularGamesLoading) return;
+
+  // Show loading
+  popularGamesLoading.classList.remove('hidden');
+  popularGamesList.classList.add('hidden');
+
+  try {
+    const response = await window.steamAPI.getPopularGames(category);
+
+    if (response.success && response.results) {
+      displayPopularGames(response.results);
+    } else {
+      popularGamesList.innerHTML = '<div class="popular-loading">Failed to load games</div>';
+      popularGamesList.classList.remove('hidden');
+    }
+  } catch (error) {
+    console.error('Failed to load popular games:', error);
+    popularGamesList.innerHTML = '<div class="popular-loading">Failed to load games</div>';
+    popularGamesList.classList.remove('hidden');
+  }
+
+  popularGamesLoading.classList.add('hidden');
+}
+
+/**
+ * Display popular games in the right sidebar
+ */
+function displayPopularGames(games: Array<{ appId: number; name: string; imageUrl?: string; discount?: string }>): void {
+  if (!popularGamesList) return;
+
+  popularGamesLoading?.classList.add('hidden');
+  popularGamesList.classList.remove('hidden');
+
+  if (games.length === 0) {
+    popularGamesList.innerHTML = '<div class="popular-loading">No games found</div>';
+    return;
+  }
+
+  popularGamesList.innerHTML = games
+    .map(
+      (game, index) => `
+      <div class="popular-game-item" data-appid="${game.appId}">
+        <span class="popular-game-rank">${index + 1}</span>
+        <img class="popular-game-image" src="${game.imageUrl || ''}" alt="${game.name}" onerror="this.style.display='none'">
+        <div class="popular-game-info">
+          <div class="popular-game-name">${game.name}</div>
+          ${game.discount ? `<div class="popular-game-players">${game.discount}</div>` : ''}
+        </div>
+      </div>
+    `
+    )
+    .join('');
+
+  // Add click handlers
+  popularGamesList.querySelectorAll('.popular-game-item').forEach((item) => {
+    item.addEventListener('click', () => {
+      const appId = (item as HTMLElement).dataset.appid;
+      if (appId) {
+        gameIdInput.value = appId;
+        loadGameById(parseInt(appId, 10));
+      }
+    });
+  });
+}
+
+/**
+ * Switch category and update UI
+ */
+function switchCategory(category: GameCategory): void {
+  if (currentCategory === category) return;
+
+  currentCategory = category;
+
+  // Update button active states
+  Object.entries(categoryButtons).forEach(([cat, btn]) => {
+    if (btn) {
+      if (cat === category) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    }
+  });
+
+  loadPopularGames(category);
+}
+
+// Setup category button handlers
+Object.entries(categoryButtons).forEach(([category, btn]) => {
+  if (btn) {
+    btn.addEventListener('click', () => switchCategory(category as GameCategory));
+  }
+});
+
+// Set initial active button and load games
+categoryButtons.top_sellers?.classList.add('active');
+loadPopularGames('top_sellers');
 
 console.log('🎮 SteamDB Explorer loaded successfully!');

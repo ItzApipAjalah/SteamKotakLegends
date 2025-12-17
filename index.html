@@ -18,6 +18,14 @@
       </svg>
     </button>
     <span class="titlebar-title">🎮 SteamKotakLegends Explorer</span>
+    <div class="titlebar-spacer"></div>
+    <button id="rightSidebarToggle" class="sidebar-toggle right-toggle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5z" />
+        <path d="M2 17l10 5 10-5" />
+        <path d="M2 12l10 5 10-5" />
+      </svg>
+    </button>
   </div>
 
   <div class="app-container">
@@ -126,7 +134,7 @@
             <path d="M2 17l10 5 10-5" />
             <path d="M2 12l10 5 10-5" />
           </svg>
-          <span class="logo-text">Steam<span class="highlight">DB</span> Explorer</span>
+          <span class="logo-text">Steam<span class="highlight">KotakLegends</span></span>
         </div>
         <div class="header-subtitle">Discover & Explore Steam Games</div>
       </header>
@@ -156,7 +164,6 @@
           </div>
           <div class="search-hints">
             <span class="hint">Popular: </span>
-            <button class="hint-btn" data-id="271590">GTA V</button>
             <button class="hint-btn" data-id="2246340">Monster Hunter Wilds</button>
             <button class="hint-btn" data-id="1903340">Expedition 33</button>
             <button class="hint-btn" data-id="1091500">Cyberpunk</button>
@@ -367,6 +374,60 @@
         </div>
       </section>
     </div>
+
+    <!-- Right Sidebar -->
+    <aside class="right-sidebar" id="rightSidebar">
+      <div class="right-sidebar-header">
+        <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z" />
+          <path d="M2 17l10 5 10-5" />
+          <path d="M2 12l10 5 10-5" />
+        </svg>
+        <span class="sidebar-title">Popular Games</span>
+      </div>
+
+      <!-- Category Buttons -->
+      <div class="popular-categories">
+        <button id="mostPlayedBtn" class="category-btn active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 20V10" />
+            <path d="M12 20V4" />
+            <path d="M6 20v-6" />
+          </svg>
+          Top Sellers
+        </button>
+        <button id="newReleasesBtn" class="category-btn" data-category="new_releases">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12,6 12,12 16,14" />
+          </svg>
+          New Releases
+        </button>
+        <button id="specialsBtn" class="category-btn" data-category="specials">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z" />
+          </svg>
+          Specials
+        </button>
+        <button id="comingSoonBtn" class="category-btn" data-category="coming_soon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+          Coming Soon
+        </button>
+      </div>
+
+      <!-- Popular Games List -->
+      <div id="popularGamesLoading" class="popular-loading">
+        <div class="mini-loader"></div>
+        <span>Loading games...</span>
+      </div>
+      <div id="popularGamesList" class="popular-games-list hidden"></div>
+    </aside>
 
     <!-- Footer -->
     <footer class="footer">
