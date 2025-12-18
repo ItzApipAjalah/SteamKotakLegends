@@ -13,6 +13,14 @@
 
 ---
 
+> ⚠️ **IMPORTANT NOTICE**  
+> **Open source applies only to version 1.0.0.**  
+> Future versions (1.2.0+) will be closed source and not publicly available.  
+> If you wish to use or modify the code, please use this version 1.0.0.  
+> However, you can still download the latest updates from the [Releases Page](https://github.com/ItzApipAjalah/SteamKotakLegends/releases).
+
+---
+
 ## Features
 
 - **Game Search** - Search and explore Steam games by App ID or name
